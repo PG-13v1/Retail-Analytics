@@ -35,7 +35,7 @@ def run():
         color="Cluster",
         title="Customer Segments"
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # Cohort Retention
     st.subheader("Retention Cohort Matrix")
@@ -67,7 +67,7 @@ def run():
         barmode="overlay",
         opacity=0.7
     )
-    st.plotly_chart(fig_ht, use_container_width=True)
+    st.plotly_chart(fig_ht, width='stretch')
 
     # Anomaly Detection
     st.subheader("Revenue Anomaly Detection")
@@ -87,7 +87,7 @@ def run():
         title="Revenue over Time with Anomalies Highlighted",
         color_discrete_map={False: "blue", True: "red"}
     )
-    st.plotly_chart(fig_anom, use_container_width=True)
+    st.plotly_chart(fig_anom, width='stretch')
 
     # optionally show anomalies table
     if not anomalies.empty:

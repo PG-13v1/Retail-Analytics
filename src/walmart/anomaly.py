@@ -12,7 +12,7 @@ def detect_retail_anomalies(df):
     Returns top suspicious transactions.
     """
 
-    X = df[["Revenue"]]
+    X = df[["Weekly_Sales"]]
 
     # ---------------------------
     # Model 1: Isolation Forest
@@ -38,6 +38,6 @@ def detect_retail_anomalies(df):
         (df["KNN_Anomaly"] == 1)
     ]
 
-    anomalies = anomalies.sort_values("Revenue", ascending=False)
+    anomalies = anomalies.sort_values("Weekly_Sales", ascending=False)
 
     return anomalies.head(20)

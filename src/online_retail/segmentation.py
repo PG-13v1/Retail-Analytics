@@ -7,7 +7,7 @@ def rfm_segmentation(df):
 
     rfm = df.groupby("CustomerID").agg({
         "InvoiceDate": lambda x: (today - x.max()).days,
-        "Invoice": "nunique",
+        "InvoiceNo": "nunique",
         "Revenue": "sum"
     })
 

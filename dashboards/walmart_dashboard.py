@@ -23,14 +23,14 @@ def run():
     weekly = df.groupby("Date")["Weekly_Sales"].sum().reset_index()
 
     fig = px.line(weekly, x="Date", y="Weekly_Sales", title="Weekly Sales Trend")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # Forecast
     st.subheader("Next 12 Weeks Forecast")
     forecast = prophet_forecast(weekly)
 
     fig2 = px.line(forecast, x="ds", y="yhat", title="Forecasted Sales")
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, width='stretch')
 
     forecast2 = arima_forecast(weekly)
     forecast2 = forecast2.dropna(subset=["yhat"])
@@ -41,7 +41,7 @@ def run():
         y="yhat",
         title="Sales Forecast (History + Next 12 Weeks)")
 
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, width='stretch')
 
     # Anomaly Detection
     st.subheader("Anomaly Detection")
@@ -58,7 +58,7 @@ def run():
             title="Detected Anomalies in Sales",
             color_discrete_sequence=["red"]
         )
-        st.plotly_chart(fig_anomaly, use_container_width=True)
+        st.plotly_chart(fig_anomaly, width='stretch')
 
 
      

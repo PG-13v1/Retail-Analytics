@@ -1,7 +1,7 @@
 def compute_kpis(df):
     return {
         "Revenue": df["Revenue"].sum(),
-        "Orders": df["Invoice"].nunique(),
+        "Orders": df["InvoiceNo"].nunique(),
         "Customers": df["CustomerID"].nunique(),
-        "AOV": df.groupby("Invoice")["Revenue"].sum().mean()
+        "AOV": df.groupby("InvoiceNo")["Revenue"].sum().mean()
     }
