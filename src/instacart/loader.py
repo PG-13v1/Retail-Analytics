@@ -1,10 +1,34 @@
 import pandas as pd
+import os
 
 
 def load_instacart():
-    orders = pd.read_csv("https://drive.google.com/file/d/18EJoLq1tl0gwpHkn4Iv099ctaczZWlYK/view?usp=sharing")
-    products = pd.read_csv("https://drive.google.com/file/d/1UDJocoMhzZZFYEdq61pii7epE1g0j5Fi/view?usp=sharing")
-    order_products = pd.read_csv("https://drive.google.com/file/d/19DUKQWkLh6f4BqsgoBoTbwiUF5w7nscp/view?usp=sharing")
+
+    HF_TOKEN = os.getenv("HF_TOKEN")
+
+    url_1 = "https://huggingface.co/datasets/PratulG/orders/resolve/main/orders.csv"
+    orders = pd.read_csv(
+    url_1,
+    storage_options={
+        "Authorization": f"Bearer {HF_TOKEN}"
+    })
+
+    url_2 = "https://huggingface.co/datasets/PratulG/orders/resolve/main/products.csv"
+    products = pd.read_csv(
+    url_2,
+    storage_options={
+        "Authorization": f"Bearer {HF_TOKEN}"
+    })
+
+    url_3 = "https://huggingface.co/datasets/PratulG/orders/resolve/main/order_products__train.csv"
+    order_products = pd.read_csv(
+    url_3,
+    storage_options={
+        "Authorization": f"Bearer {HF_TOKEN}"
+    })
+
 
     merged = order_products.merge(products, on="product_id")
+    print(merged.head())
     return merged
+
