@@ -3,13 +3,12 @@ pandas
 numpy==1.26.4
 plotly
 scikit-learn
+statsmodels
 prophet==1.1.5
-cmdstanpy
+cmdstanpy==1.2.2
 mlxtend
 gensim==4.3.2
 pyod
 streamlit-option-menu
 Lifetimes
-pmdarima==2.0.4
-cython
 scipy==1.11.4
