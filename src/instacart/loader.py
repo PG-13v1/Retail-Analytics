@@ -1,7 +1,14 @@
+
+
+
 import pandas as pd
 import os
 
+import streamlit as st
+from dotenv import load_dotenv
+load_dotenv()
 
+@st.cache_data(ttl=3600, show_spinner="Loading Instacart data...")
 def load_instacart():
 
     HF_TOKEN = os.getenv("HF_TOKEN")
@@ -30,5 +37,4 @@ def load_instacart():
 
     merged = order_products.merge(products, on="product_id")
     print(merged.head())
-    return merged
 
