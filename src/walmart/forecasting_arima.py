@@ -1,44 +1,56 @@
 import pandas as pd
+import streamlit as st
 import pmdarima as pm
 
-import pandas as pd
-import pmdarima as pm
 
+@st.cache_data(show_spinner="Training ARIMA model...")
 def arima_forecast(weekly_df):
-    """
-    AutoARIMA forecast + historical data combined (Prophet-style output).
-    Returns one dataframe for plotting full series.
-    """
 
-    # Ensure datetime format
-    weekly_df["Date"] = pd.to_datetime(weekly_df["Date"])
-    weekly_df = weekly_df.sort_values("Date")
+    df = weekly_df.copy()
 
     # -------------------------------
-    # 1. Historical Data
+    # Ensure datetime + sorting
     # -------------------------------
-    history_df = weekly_df.rename(columns={
+    df["Date"] = pd.to_datetime(df["Date"])
+    df = df.sort_values("Date")
+
+    # -------------------------------
+    # Handle missing weeks (IMPORTANT)
+    # -------------------------------
+    df = df.set_index("Date").asfreq("W").fillna(method="ffill").reset_index()
+
+    # -------------------------------
+    # Rename for consistency
+    # -------------------------------
+    df = df.rename(columns={
         "Date": "ds",
         "Weekly_Sales": "y"
     })
 
-    # Time series values
-    y = history_df["y"].values
+    y = df["y"].values
 
     # -------------------------------
-    # 2. Fit AutoARIMA Model
+    # Train model (safe config)
     # -------------------------------
-    model = pm.auto_arima(
-        y,
-        seasonal=True,
-        m=52,
-        stepwise=True,
-        suppress_warnings=True,
-        trace=False
-    )
+    try:
+        model = pm.auto_arima(
+            y,
+            seasonal=True,
+            m=52,
+            stepwise=True,
+            suppress_warnings=True,
+            error_action="ignore"
+        )
+    except:
+        # fallback if seasonal fails
+        model = pm.auto_arima(
+            y,
+            seasonal=False,
+            stepwise=True
+        )
 
     # -------------------------------
-    # 3. Forecast Next 12 Weeks
+    # Forecast
     # -------------------------------
     n_periods = 12
     forecast, conf_int = model.predict(
@@ -47,8 +59,7 @@ def arima_forecast(weekly_df):
     )
 
     # Future dates
-    last_date = history_df["ds"].max()
-
+    last_date = df["ds"].max()
     future_dates = pd.date_range(
         start=last_date + pd.Timedelta(weeks=1),
         periods=n_periods,
@@ -63,21 +74,21 @@ def arima_forecast(weekly_df):
     })
 
     # -------------------------------
-    # 4. Add Historical as yhat too
+    # Historical
     # -------------------------------
-    history_plot_df = history_df.copy()
-    history_plot_df["yhat"] = history_plot_df["y"]
-
-    # No confidence interval for history
-    history_plot_df["yhat_lower"] = None
-    history_plot_df["yhat_upper"] = None
+    history_df = df.copy()
+    history_df["yhat"] = history_df["y"]
+    history_df["yhat_lower"] = None
+    history_df["yhat_upper"] = None
 
     # -------------------------------
-    # 5. Combine History + Forecast
+    # Combine
     # -------------------------------
     full_df = pd.concat(
-        [history_plot_df[["ds", "yhat", "yhat_lower", "yhat_upper"]],
-         forecast_df],
+        [
+            history_df[["ds", "yhat", "yhat_lower", "yhat_upper"]],
+            forecast_df
+        ],
         ignore_index=True
     )
 
