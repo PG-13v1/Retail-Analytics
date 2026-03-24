@@ -1,42 +1,58 @@
+import streamlit as st
 from gensim.models import Word2Vec
 
 
+@st.cache_resource(show_spinner="Training product embeddings...")
 def train_product_embeddings(order_products, products):
-    """
-    Train product embeddings based on co-purchase behavior.
-    Each order = a sentence, each product = a word.
-    """
 
-    # Merge product names
     merged = order_products.merge(products, on="product_id")
 
-    # Build "sentences": list of products per order
+    # ---------------------------
+    # Clean product names
+    # ---------------------------
+    merged["product_name"] = merged["product_name"].str.lower().str.strip()
+
+    # ---------------------------
+    # Build sentences
+    # ---------------------------
     orders = (
         merged.groupby("order_id")["product_name"]
         .apply(list)
         .tolist()
     )
 
-    # Train Word2Vec model
+    # ---------------------------
+    # Train Word2Vec
+    # ---------------------------
     model = Word2Vec(
         sentences=orders,
-        vector_size=50,
+        vector_size=64,
         window=5,
         min_count=5,
-        workers=4
+        workers=4,
+        sg=1  # Skip-gram (better for recommendations)
     )
 
     return model
 
 
 def similar_products(model, product_name, top_n=10):
-    """
-    Recommend similar products based on embedding similarity.
-    """
+
+    product_name = product_name.lower().strip()
 
     if product_name not in model.wv:
-        return f"Product '{product_name}' not in vocabulary."
+        # Suggest closest match
+        vocab = list(model.wv.index_to_key)
+        suggestions = [p for p in vocab if product_name in p][:5]
+
+        return {
+            "error": f"'{product_name}' not found",
+            "suggestions": suggestions
+        }
 
     sims = model.wv.most_similar(product_name, topn=top_n)
 
-    return sims
+    return [
+        {"product": prod, "similarity": score}
+        for prod, score in sims
+    ]
