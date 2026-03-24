@@ -36,5 +36,5 @@ def load_instacart():
 
 
     merged = order_products.merge(products, on="product_id")
-    print(merged.head())
+    return merged
 
