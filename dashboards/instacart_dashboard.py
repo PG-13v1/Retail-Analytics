@@ -15,3 +15,4 @@ def run():
     top = most_popular_products(merged)
 
     st.dataframe(top)
+
