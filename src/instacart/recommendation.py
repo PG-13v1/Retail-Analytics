@@ -13,48 +13,45 @@ Includes:
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from mlxtend.frequent_patterns import apriori, association_rules
+import streamlit as st
 
-
-# ============================================================
-# 1. Co-Purchase Recommendation (Simple + Powerful)
-# ============================================================
-
+@st.cache_data(show_spinner="Generating co-purchase recommendations...")
 def copurchase_recommender(order_products, products, product_name, top_n=10):
-    """
-    Recommend products frequently bought together with a given product.
-    """
 
     merged = order_products.merge(products, on="product_id")
+    merged["product_name"] = merged["product_name"].str.lower().str.strip()
+    product_name = product_name.lower().strip()
 
-    # Orders containing chosen product
-    target_orders = merged[merged["product_name"] == product_name]["order_id"]
+    target_orders = merged.loc[
+        merged["product_name"] == product_name, "order_id"
+    ]
 
-    # Other products in same orders
     recommendations = (
-        merged[merged["order_id"].isin(target_orders)]
-        ["product_name"]
+        merged.loc[merged["order_id"].isin(target_orders), "product_name"]
         .value_counts()
         .drop(product_name, errors="ignore")
         .head(top_n)
+        .reset_index()
     )
 
-    return recommendations.reset_index().rename(
-        columns={"index": "Recommended Product", "product_name": "Count"}
-    )
+    recommendations.columns = ["Recommended Product", "Count"]
+
+    return recommendations
 
 
 # ============================================================
 # 2. Item-Based Collaborative Filtering (Cosine Similarity)
 # ============================================================
 
+@st.cache_resource(show_spinner="Building similarity matrix...")
 def build_similarity_matrix(order_products, products):
-    """
-    Build product-product similarity matrix using cosine similarity.
-    """
 
     merged = order_products.merge(products, on="product_id")
 
-    # Create order-product matrix
+    # Reduce dimensionality (IMPORTANT)
+    top_products = merged["product_name"].value_counts().head(200).index
+    merged = merged[merged["product_name"].isin(top_products)]
+
     basket = merged.pivot_table(
         index="order_id",
         columns="product_name",
@@ -62,10 +59,9 @@ def build_similarity_matrix(order_products, products):
         aggfunc="count"
     ).fillna(0)
 
-    # Convert to binary purchase matrix
-    basket = basket.applymap(lambda x: 1 if x > 0 else 0)
+    # FAST binarization
+    basket = (basket > 0).astype("int8")
 
-    # Compute cosine similarity between products
     similarity = cosine_similarity(basket.T)
 
     similarity_df = pd.DataFrame(
@@ -78,23 +74,25 @@ def build_similarity_matrix(order_products, products):
 
 
 def similar_products(similarity_df, product_name, top_n=10):
-    """
-    Recommend similar products using similarity matrix.
-    """
+
+    product_name = product_name.lower().strip()
 
     if product_name not in similarity_df.columns:
-        return f"Product '{product_name}' not found."
+        suggestions = [
+            p for p in similarity_df.columns if product_name in p
+        ][:5]
 
-    sims = (
-        similarity_df[product_name]
-        .sort_values(ascending=False)
-        .iloc[1:top_n+1]
-    )
+        return {
+            "error": f"'{product_name}' not found",
+            "suggestions": suggestions
+        }
 
-    return sims.reset_index().rename(
-        columns={"index": "Similar Product", product_name: "Similarity Score"}
-    )
+    sims = similarity_df[product_name].sort_values(ascending=False)
 
+    sims = sims.iloc[1:top_n+1].reset_index()
+    sims.columns = ["Similar Product", "Similarity Score"]
+
+    return sims
 
 # ============================================================
 # 3. Association Rule-Based Recommendation (Apriori)
@@ -102,12 +100,16 @@ def similar_products(similarity_df, product_name, top_n=10):
 
 from mlxtend.frequent_patterns import apriori, association_rules
 
+from mlxtend.frequent_patterns import apriori, association_rules
+
+@st.cache_data(show_spinner="Running Apriori...")
 def apriori_recommender(order_products, products, min_support=0.01):
-    """
-    Build Apriori association rules for basket recommendation.
-    """
 
     merged = order_products.merge(products, on="product_id")
+
+    # Reduce size
+    top_products = merged["product_name"].value_counts().head(100).index
+    merged = merged[merged["product_name"].isin(top_products)]
 
     basket = merged.pivot_table(
         index="order_id",
@@ -116,7 +118,8 @@ def apriori_recommender(order_products, products, min_support=0.01):
         aggfunc="count"
     ).fillna(0)
 
-    basket = basket.applymap(lambda x: 1 if x > 0 else 0)
+    # FAST binarization
+    basket = (basket > 0).astype("int8")
 
     frequent_itemsets = apriori(
         basket,
@@ -130,4 +133,10 @@ def apriori_recommender(order_products, products, min_support=0.01):
         min_threshold=1.2
     )
 
-    return rules.sort_values("lift", ascending=False)
+    # Clean output
+    rules["antecedents"] = rules["antecedents"].apply(lambda x: ", ".join(list(x)))
+    rules["consequents"] = rules["consequents"].apply(lambda x: ", ".join(list(x)))
+
+    return rules.sort_values("lift", ascending=False)[
+        ["antecedents", "consequents", "support", "confidence", "lift"]
+    ]
